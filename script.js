@@ -810,93 +810,79 @@ function updateCharts() {
 
     // Prepare Data for Main Chart (Monthly)
     const labels = state.validColumns.map(c => {
-        // c is already "Mes/Ano" format from the CSV headers usually, or we ensure it is
-        // The CSV headers are like "jan/24", "fev/24".
-        // Let's capitalize them properly: "Jan/24"
         const [mes, ano] = c.split('/');
         return `${mes.charAt(0).toUpperCase() + mes.slice(1)}/${ano}`;
     });
 
+    // Helper: Pegar valor de uma linha específica para um mês
+    const getRowValue = (descricao, col) => {
+        const row = state.dreData.find(r => r.type === 'data' && r.descricao === descricao);
+        return row ? (row.meses[col] || 0) : 0;
+    };
+
     // 1. Receitas Operacionais (Monthly)
     const monthlyReceitas = labels.map((_, i) => {
         const col = state.validColumns[i];
-        let sum = 0;
-        state.dreData.forEach(row => {
-            if (row.type === 'data' && ['Receita Bruta de Vendas', 'Receitas Indiretas'].includes(row.descricao)) {
-                sum += row.meses[col] || 0;
-            }
-        });
-        return sum;
+        return getRowValue('Receita Bruta de Vendas', col) + getRowValue('Receitas Indiretas', col);
     });
 
-    // 2. Saídas (Monthly) - Usar os totalizadores calculados
+    // 2. Saídas (Monthly) = Total Impostos + Total Custos + Total Despesas + Total Investimentos
     const monthlySaidas = labels.map((_, i) => {
         const col = state.validColumns[i];
+        let total = 0;
 
-        // Somar: Impostos + Custos + Despesas + Investimentos
-        let impostos = 0;
-        let custos = 0;
-        let despesas = 0;
-        let investimentos = 0;
+        // Impostos
+        total += getRowValue('Impostos', col);
+        total += getRowValue('Provisão IRPJ e CSSL Trimestral', col);
 
-        state.dreData.forEach(row => {
-            if (row.type === 'data') {
-                const val = row.meses[col] || 0;
-                const desc = row.descricao;
+        // Custos
+        total += getRowValue('Credenciado Operacional', col);
+        total += getRowValue('Terceirização de Mão de Obra', col);
+        total += getRowValue('CLTs', col);
+        total += getRowValue('Custo dos Serviços Prestados', col);
+        total += getRowValue('Preventiva - B2G', col);
+        total += getRowValue('Corretiva - B2G', col);
+        total += getRowValue('Outros Custos', col);
 
-                // Impostos
-                if (['Impostos', 'Provisão IRPJ e CSSL Trimestral'].includes(desc)) {
-                    impostos += val;
-                }
-                // Custos
-                else if (['Credenciado Operacional', 'Terceirização de Mão de Obra', 'CLTs',
-                    'Custo dos Serviços Prestados', 'Preventiva - B2G', 'Corretiva - B2G',
-                    'Outros Custos'].includes(desc)) {
-                    custos += val;
-                }
-                // Despesas
-                else if (['Credenciado Administrativo', 'Credenciado TI', 'Despesas Administrativas',
-                    'Despesas de Vendas e Marketing', 'Despesas Financeiras', 'Outros Tributos',
-                    'Despesas Eventuais', 'Despesas Variáveis', 'Intermediação de Negócios'].includes(desc)) {
-                    despesas += val;
-                }
-                // Investimentos
-                else if (['Consórcios a contemplar', 'Serviços', 'Ativos'].includes(desc)) {
-                    investimentos += val;
-                }
-            }
-        });
+        // Despesas
+        total += getRowValue('Credenciado Administrativo', col);
+        total += getRowValue('Credenciado TI', col);
+        total += getRowValue('Despesas Administrativas', col);
+        total += getRowValue('Despesas de Vendas e Marketing', col);
+        total += getRowValue('Despesas Financeiras', col);
+        total += getRowValue('Outros Tributos', col);
+        total += getRowValue('Despesas Eventuais', col);
+        total += getRowValue('Despesas Variáveis', col);
+        total += getRowValue('Intermediação de Negócios', col);
 
-        return impostos + custos + despesas + investimentos;
+        // Investimentos
+        total += getRowValue('Consórcios a contemplar', col);
+        total += getRowValue('Serviços', col);
+        total += getRowValue('Ativos', col);
+
+        return total;
     });
 
-    // 3. Resultado (Monthly)
+    // 3. Resultado (Monthly) = Receitas Operacionais + Outras Entradas + Ativos - Saídas
     const monthlyResult = labels.map((_, i) => {
         const col = state.validColumns[i];
-        let res = 0;
-        state.dreData.forEach(row => {
-            if (row.type === 'data') {
-                const val = row.meses[col] || 0;
-                if (['Receita Bruta de Vendas', 'Receitas Indiretas', 'Outras Receitas', 'Receitas Financeiras', 'Honorários', 'Juros e Devoluções', 'Ativos'].includes(row.descricao)) {
-                    res += val;
-                } else {
-                    res -= val;
-                }
-            }
-        });
-        return res;
+
+        const receitas = monthlyReceitas[i];
+        const outrasEntradas = getRowValue('Outras Receitas', col) +
+            getRowValue('Receitas Financeiras', col) +
+            getRowValue('Honorários', col) +
+            getRowValue('Juros e Devoluções', col);
+        const ativos = getRowValue('Ativos', col);
+        const saidas = monthlySaidas[i];
+
+        return receitas + outrasEntradas + ativos - saidas;
     });
 
-    // 4. FCL - Fluxo de Caixa Livre (Monthly) = Resultado - Ativos
+    // 4. FCL (Monthly) = Resultado - Ativos
     const monthlyFCL = labels.map((_, i) => {
         const col = state.validColumns[i];
         const resultado = monthlyResult[i];
-        let ativos = 0;
-        state.dreData.forEach(row => {
-            if (row.type === 'data' && row.descricao === 'Ativos') {
-                ativos += row.meses[col] || 0;
-            }
-        });
+        const ativos = getRowValue('Ativos', col);
         return resultado - ativos;
     });
 
@@ -910,12 +896,10 @@ function updateCharts() {
             if (context.parsed.y !== null) {
                 label += formatCurrency(context.parsed.y);
             }
-
             const dataIndex = context.dataIndex;
             if (dataIndex > 0) {
                 const current = context.parsed.y;
                 const prev = context.dataset.data[dataIndex - 1];
-
                 if (prev !== 0) {
                     const change = ((current - prev) / Math.abs(prev)) * 100;
                     const icon = change >= 0 ? '▲' : '▼';
@@ -996,10 +980,8 @@ function updateCharts() {
     // Pie Chart
     const m = state.metrics;
     if (state.charts.pie) state.charts.pie.destroy();
-
     const pieData = [m.total_custos, m.total_despesas, m.total_impostos, m.total_investimentos];
     const pieTotal = pieData.reduce((a, b) => a + b, 0);
-
     state.charts.pie = new Chart(ctxPie, {
         type: 'doughnut',
         data: {
@@ -1028,6 +1010,111 @@ function updateCharts() {
             cutout: '70%'
         }
     });
+}
+
+
+if (state.charts.main) state.charts.main.destroy();
+state.charts.main = new Chart(ctxMain, {
+    type: 'bar',
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Receitas Operacionais',
+                data: monthlyReceitas,
+                backgroundColor: CONFIG.COLORS.primary,
+                borderRadius: 4,
+                order: 3
+            },
+            {
+                label: 'Saídas',
+                data: monthlySaidas,
+                backgroundColor: CONFIG.COLORS.danger,
+                borderRadius: 4,
+                order: 4
+            },
+            {
+                label: 'Resultado',
+                data: monthlyResult,
+                type: 'line',
+                borderColor: CONFIG.COLORS.secondary,
+                borderWidth: 2,
+                tension: 0.4,
+                pointBackgroundColor: CONFIG.COLORS.secondary,
+                order: 1
+            },
+            {
+                label: 'FCL',
+                data: monthlyFCL,
+                type: 'line',
+                borderColor: CONFIG.COLORS.success,
+                borderWidth: 2,
+                tension: 0.4,
+                pointBackgroundColor: CONFIG.COLORS.success,
+                order: 2
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
+        plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+                callbacks: tooltipCallback
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { borderDash: [2, 4] }
+            },
+            x: {
+                grid: { display: false }
+            }
+        }
+    }
+});
+
+// Pie Chart
+const m = state.metrics;
+if (state.charts.pie) state.charts.pie.destroy();
+
+const pieData = [m.total_custos, m.total_despesas, m.total_impostos, m.total_investimentos];
+const pieTotal = pieData.reduce((a, b) => a + b, 0);
+
+state.charts.pie = new Chart(ctxPie, {
+    type: 'doughnut',
+    data: {
+        labels: ['Custos', 'Despesas', 'Impostos', 'Investimentos'],
+        datasets: [{
+            data: pieData,
+            backgroundColor: [CONFIG.COLORS.info, CONFIG.COLORS.secondary, CONFIG.COLORS.danger, CONFIG.COLORS.success],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+                callbacks: {
+                    label: function (context) {
+                        const value = context.parsed;
+                        const percentage = pieTotal > 0 ? ((value / pieTotal) * 100).toFixed(1) + '%' : '0%';
+                        return `${context.label}: ${formatCurrency(value)} (${percentage})`;
+                    }
+                }
+            }
+        },
+        cutout: '70%'
+    }
+});
 }
 
 function updateTable() {
