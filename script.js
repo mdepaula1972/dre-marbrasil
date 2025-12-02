@@ -183,7 +183,7 @@ function initCharts() {
 // ========================================
 async function loadFromGoogleSheets() {
     const SHEET_ID = '1aBSas0JlWuXEubN6ti7tYVUPrCz_qfmXA6LWwbdPMiw';
-    const SHEET_NAME = 'Página1'; // Ou o nome da sua aba
+    const SHEET_NAME = 'Dados'; // Ou o nome da sua aba
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
 
     document.getElementById('loadingOverlay').classList.remove('d-none');
