@@ -685,6 +685,17 @@ function calculateDRE() {
         perc_pessoal: totalSaidas !== 0 ? (pessoal / totalSaidas * 100) : 0,
         perc_corretiva: totalSaidas !== 0 ? (corretiva / totalSaidas * 100) : 0,
         perc_preventiva: totalSaidas !== 0 ? (preventiva / totalSaidas * 100) : 0,
+        // Percentuais em relação à Receita Operacional (para row2)
+        perc_custos_receita: totalEntradas !== 0 ? (totalCustos / totalEntradas * 100) : 0,
+        perc_despesas_receita: totalEntradas !== 0 ? (totalDespesas / totalEntradas * 100) : 0,
+        perc_investimentos_receita: totalEntradas !== 0 ? (totalInvestimentos / totalEntradas * 100) : 0,
+        perc_impostos_receita: totalEntradas !== 0 ? (totalImpostos / totalEntradas * 100) : 0,
+        perc_pessoal_receita: totalEntradas !== 0 ? (pessoal / totalEntradas * 100) : 0,
+        perc_credenciados_receita: totalEntradas !== 0 ? (credenciados / totalEntradas * 100) : 0,
+        perc_clts_receita: totalEntradas !== 0 ? (clts / totalEntradas * 100) : 0,
+        perc_terceirizacao_receita: totalEntradas !== 0 ? (terceirizacao / totalEntradas * 100) : 0,
+        perc_corretiva_receita: totalEntradas !== 0 ? (corretiva / totalEntradas * 100) : 0,
+        perc_preventiva_receita: totalEntradas !== 0 ? (preventiva / totalEntradas * 100) : 0,
         // Detailed for charts
         receita_operacional: receitaOperacional,
         receita_indireta: receitaIndireta,
@@ -751,19 +762,19 @@ function updateCards() {
 
     // Row 2 (Secondary KPIs + New Metrics)
     const row2 = [
-        { key: 'total_custos', title: 'Custos Operacionais', icon: 'bi-gear', color: 'info', percentKey: 'perc_custos', percentRefIcon: 'bi-graph-down-arrow' },
-        { key: 'total_despesas', title: 'Despesas Rateadas', icon: 'bi-calculator', color: 'info', percentKey: 'perc_despesas', percentRefIcon: 'bi-graph-down-arrow' },
-        { key: 'total_investimentos', title: 'Investimentos', icon: 'bi-piggy-bank', color: 'info', percentKey: 'perc_investimentos', percentRefIcon: 'bi-graph-down-arrow' },
-        { key: 'total_impostos', title: 'Impostos', icon: 'bi-bank', color: 'danger', percentKey: 'perc_impostos', percentRefIcon: 'bi-graph-down-arrow' },
+        { key: 'total_custos', title: 'Custos Operacionais', icon: 'bi-gear', color: 'info', percentKey: 'perc_custos', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_custos_receita', percentRefIcon2: 'bi-graph-up-arrow' },
+        { key: 'total_despesas', title: 'Despesas Rateadas', icon: 'bi-calculator', color: 'info', percentKey: 'perc_despesas', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_despesas_receita', percentRefIcon2: 'bi-graph-up-arrow' },
+        { key: 'total_investimentos', title: 'Investimentos', icon: 'bi-piggy-bank', color: 'info', percentKey: 'perc_investimentos', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_investimentos_receita', percentRefIcon2: 'bi-graph-up-arrow' },
+        { key: 'total_impostos', title: 'Impostos', icon: 'bi-bank', color: 'danger', percentKey: 'perc_impostos', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_impostos_receita', percentRefIcon2: 'bi-graph-up-arrow' },
         { key: 'perc_lucro', title: 'Margem Lucro', icon: 'bi-percent', color: 'success', isPercent: true },
         { key: 'perc_fcl', title: 'Margem FCL', icon: 'bi-percent', color: 'success', isPercent: true },
         // New Cards
-        { key: 'pessoal', title: 'Pessoal', icon: 'bi-people', color: 'info', percentKey: 'perc_pessoal', percentRefIcon: 'bi-graph-down-arrow' },
-        { key: 'credenciados', title: 'Credenciados', icon: 'bi-person-badge', color: 'primary', percentKey: 'perc_credenciados', percentRefIcon: 'bi-graph-down-arrow' },
-        { key: 'clts', title: 'CLTs', icon: 'bi-person-vcard', color: 'success', percentKey: 'perc_clts', percentRefIcon: 'bi-graph-down-arrow' },
-        { key: 'terceirizacao', title: 'Terceirização', icon: 'bi-people-fill', color: 'warning', percentKey: 'perc_terceirizacao', percentRefIcon: 'bi-graph-down-arrow' },
-        { key: 'corretiva', title: 'Corretiva', icon: 'bi-tools', color: 'danger', percentKey: 'perc_corretiva', percentRefIcon: 'bi-graph-down-arrow' },
-        { key: 'preventiva', title: 'Preventiva', icon: 'bi-shield-check', color: 'success', percentKey: 'perc_preventiva', percentRefIcon: 'bi-graph-down-arrow' }
+        { key: 'pessoal', title: 'Pessoal', icon: 'bi-people', color: 'info', percentKey: 'perc_pessoal', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_pessoal_receita', percentRefIcon2: 'bi-graph-up-arrow' },
+        { key: 'credenciados', title: 'Credenciados', icon: 'bi-person-badge', color: 'primary', percentKey: 'perc_credenciados', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_credenciados_receita', percentRefIcon2: 'bi-graph-up-arrow' },
+        { key: 'clts', title: 'CLTs', icon: 'bi-person-vcard', color: 'success', percentKey: 'perc_clts', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_clts_receita', percentRefIcon2: 'bi-graph-up-arrow' },
+        { key: 'terceirizacao', title: 'Terceirização', icon: 'bi-people-fill', color: 'warning', percentKey: 'perc_terceirizacao', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_terceirizacao_receita', percentRefIcon2: 'bi-graph-up-arrow' },
+        { key: 'corretiva', title: 'Corretiva', icon: 'bi-tools', color: 'danger', percentKey: 'perc_corretiva', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_corretiva_receita', percentRefIcon2: 'bi-graph-up-arrow' },
+        { key: 'preventiva', title: 'Preventiva', icon: 'bi-shield-check', color: 'success', percentKey: 'perc_preventiva', percentRefIcon: 'bi-graph-down-arrow', percentKey2: 'perc_preventiva_receita', percentRefIcon2: 'bi-graph-up-arrow' }
     ];
 
     // Adjust column size for row 2 to fit more cards (e.g., col-lg-2 for 6 cards per row)
@@ -781,15 +792,21 @@ function renderCards(containerId, cards, metrics, colSize) {
         const cardClass = card.color === 'highlight' ? 'card-highlight' : `card-${card.color}`;
         const bgClass = card.bgColor || '';
 
-        // Adicionar percentual se existir
+        // Adicionar percentuais se existirem
         let percentHtml = '';
         if (card.percentKey && metrics[card.percentKey] !== undefined) {
             const percentVal = metrics[card.percentKey];
-            // Adicionar ícone de referência se fornecido
             const refIcon = card.percentRefIcon ? `<i class="bi ${card.percentRefIcon} me-1"></i>` : '';
-            // Definir classe baseada no tipo de referência
             const refClass = card.percentRefIcon === 'bi-graph-up-arrow' ? 'percent-ref-receitas' : 'percent-ref-saidas';
             percentHtml = `<div class="card-percent ${refClass}">${refIcon}${percentVal.toFixed(1)}%</div>`;
+        }
+
+        // Adicionar segundo percentual se existir
+        if (card.percentKey2 && metrics[card.percentKey2] !== undefined) {
+            const percentVal2 = metrics[card.percentKey2];
+            const refIcon2 = card.percentRefIcon2 ? `<i class="bi ${card.percentRefIcon2} me-1"></i>` : '';
+            const refClass2 = card.percentRefIcon2 === 'bi-graph-up-arrow' ? 'percent-ref-receitas' : 'percent-ref-saidas';
+            percentHtml += `<div class="card-percent ${refClass2}">${refIcon2}${percentVal2.toFixed(1)}%</div>`;
         }
 
         const html = `
