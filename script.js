@@ -91,6 +91,54 @@ document.addEventListener('DOMContentLoaded', () => {
     initCharts();
 });
 
+// ========================================
+// Google Sheets Integration
+// ========================================
+async function loadFromGoogleSheets() {
+    const SHEET_ID = '1aBSas0JlWuXEubN6ti7tYVUPrCz_qfmXA6LWwbdPMiw';
+    const SHEET_NAME = 'Dados';
+
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+    document.getElementById('loadingOverlay').classList.remove('d-none');
+    document.getElementById('fileStatus').textContent = 'Carregando dados do Google Sheets...';
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            mode: 'cors'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}. Verifique se a planilha está publicada.`);
+        }
+
+        const csvText = await response.text();
+
+        if (!csvText || csvText.trim().length === 0) {
+            throw new Error('A planilha está vazia.');
+        }
+
+        if (csvText.trim().startsWith('<')) {
+            throw new Error('Planilha não está publicada corretamente.');
+        }
+
+        Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: processParsedData,
+            error: (error) => {
+                throw new Error(`Erro ao processar CSV: ${error.message}`);
+            }
+        });
+
+    } catch (error) {
+        document.getElementById('loadingOverlay').classList.add('d-none');
+        alert(`Erro: ${error.message}\n\nSiga as instruções em INSTRUCOES_GOOGLE_SHEETS.md`);
+        console.error('Erro detalhado:', error);
+    }
+}
+
 function initEventListeners() {
     // File Upload
     document.getElementById('csvFile').addEventListener('change', handleFileUpload);
