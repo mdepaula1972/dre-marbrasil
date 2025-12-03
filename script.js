@@ -728,7 +728,6 @@ function updateCards() {
 
     // Row 1 (Main KPIs)
     const row1 = [
-        const row1 = [
         {
             key: 'total_entradas',
             title: 'Receitas Totais',
