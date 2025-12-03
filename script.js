@@ -71,11 +71,10 @@ const CONFIG = {
 let state = {
     rawData: [],
     filteredData: [],
-    mapaMeses: {}, // colName -> normalizedMonth
+    mapaMeses: {},
     filters: {
         empresas: [],
-        anos: [],
-        meses: [],
+        periodos: [],  // ← NOVO
         projetos: [],
         categorias: []
     },
@@ -135,49 +134,45 @@ document.addEventListener('DOMContentLoaded', () => {
     initCharts();
 });
 
-function initEventListeners() {
-    // File Upload
-    document.getElementById('csvFile').addEventListener('change', handleFileUpload);
+// Filters with Cascading Support
+const filterOrder = ['Periodo', 'Empresa', 'Projeto', 'Categoria'];
+filterOrder.forEach(filter => {
+    document.getElementById(`filter${filter}`).addEventListener('change', (e) => {
+        const selectedOptions = Array.from(e.target.selectedOptions).map(opt => opt.value);
+        const key = filter.toLowerCase() + (filter === 'Mes' ? 'es' : 's'); // pluralize
+        state.filters[key] = selectedOptions;
 
-    // Filters with Cascading Support
-    const filterOrder = ['Ano', 'Mes', 'Empresa', 'Projeto', 'Categoria'];
-    filterOrder.forEach(filter => {
-        document.getElementById(`filter${filter}`).addEventListener('change', (e) => {
-            const selectedOptions = Array.from(e.target.selectedOptions).map(opt => opt.value);
-            const key = filter.toLowerCase() + (filter === 'Mes' ? 'es' : 's'); // pluralize
-            state.filters[key] = selectedOptions;
+        // Update dependent filters (cascade)
+        updateCascadeFilters(filter);
 
-            // Update dependent filters (cascade)
-            updateCascadeFilters(filter);
-
-            applyFilters();
-        });
+        applyFilters();
     });
+});
 
-    document.getElementById('btnClearFilters').addEventListener('click', clearFilters);
-    document.getElementById('toggleSidebar').addEventListener('click', () => {
-        document.getElementById('sidebar').classList.toggle('active');
-    });
+document.getElementById('btnClearFilters').addEventListener('click', clearFilters);
+document.getElementById('toggleSidebar').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('active');
+});
 
-    // Desktop Sidebar Toggle
-    document.getElementById('sidebarToggle').addEventListener('click', () => {
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const icon = document.querySelector('#sidebarToggle i');
+// Desktop Sidebar Toggle
+document.getElementById('sidebarToggle').addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const icon = document.querySelector('#sidebarToggle i');
 
-        sidebar.classList.toggle('collapsed');
-        mainContent.classList.toggle('expanded');
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded');
 
-        if (sidebar.classList.contains('collapsed')) {
-            icon.classList.remove('bi-chevron-left');
-            icon.classList.add('bi-chevron-right');
-        } else {
-            icon.classList.remove('bi-chevron-right');
-            icon.classList.add('bi-chevron-left');
-        }
-    });
+    if (sidebar.classList.contains('collapsed')) {
+        icon.classList.remove('bi-chevron-left');
+        icon.classList.add('bi-chevron-right');
+    } else {
+        icon.classList.remove('bi-chevron-right');
+        icon.classList.add('bi-chevron-left');
+    }
+});
 
-    document.getElementById('btnExportTable').addEventListener('click', exportTableToCSV);
+document.getElementById('btnExportTable').addEventListener('click', exportTableToCSV);
 }
 
 function initCharts() {
@@ -294,9 +289,9 @@ function toTitleCase(str) {
 }
 
 function extractMetadata(data) {
-    // Extract Years and Map Months
+    // Extract all month/year columns
     const colunasData = Object.keys(data[0]).filter(k => !['Empresa', 'Projeto', 'Categoria'].includes(k));
-    const anos = new Set();
+    const periodos = [];
     state.mapaMeses = {};
 
     colunasData.forEach(col => {
@@ -304,22 +299,24 @@ function extractMetadata(data) {
         if (partes.length === 2) {
             const mesNome = partes[0].trim();
             const ano = partes[1].trim();
-            anos.add(ano);
-            state.mapaMeses[col] = normalizeMes(mesNome);
+            const mesNormalizado = normalizeMes(mesNome);
+            state.mapaMeses[col] = mesNormalizado;
+            periodos.push({ col: col, mes: mesNormalizado, ano: ano });
         }
     });
 
-    // Populate Filter Options - Initial Load (All Options)
-    populateSelect('filterAno', Array.from(anos).sort());
-
-    // Get all unique months from data
-    const allMonths = [...new Set(
-        Object.keys(state.mapaMeses).map(col => state.mapaMeses[col])
-    )].sort((a, b) => {
-        return CONFIG.MESES_ORDEM.indexOf(a) - CONFIG.MESES_ORDEM.indexOf(b);
+    // Sort periods chronologically (by year then month)
+    periodos.sort((a, b) => {
+        const yearDiff = a.ano.localeCompare(b.ano);
+        if (yearDiff !== 0) return yearDiff;
+        return CONFIG.MESES_ORDEM.indexOf(a.mes) - CONFIG.MESES_ORDEM.indexOf(b.mes);
     });
 
-    populateSelect('filterMes', allMonths);
+    // Format as "Jan/24", "Fev/24", etc.
+    const periodosFormatados = periodos.map(p => `${p.mes}/${p.ano}`);
+
+    // Populate Filter Options - Initial Load
+    populateSelect('filterPeriodo', periodosFormatados);
     populateSelect('filterEmpresa', [...new Set(data.map(d => d.Empresa))].sort());
     populateSelect('filterProjeto', [...new Set(data.map(d => d.Projeto))].sort());
     populateSelect('filterCategoria', [...new Set(data.map(d => d.Categoria))].sort());
@@ -330,24 +327,13 @@ function normalizeMes(mes) {
 }
 
 function updateCascadeFilters(changedFilter) {
-    // Filter order: Ano → Mes → Empresa → Projeto → Categoria
-    const filterOrder = ['Ano', 'Mes', 'Empresa', 'Projeto', 'Categoria'];
+    // Filter order: Periodo → Empresa → Projeto → Categoria
+    const filterOrder = ['Periodo', 'Empresa', 'Projeto', 'Categoria'];
     const changedIndex = filterOrder.indexOf(changedFilter);
 
     if (changedIndex === -1) return;
 
-    // Get currently filtered data based on filters up to and including the changed filter
-    let filteredData = [...state.rawData];
     const f = state.filters;
-
-    // Apply filters up to the changed filter
-    if (f.anos.length > 0 && changedIndex >= 0) {
-        const validCols = Object.keys(state.mapaMeses).filter(col => {
-            const ano = col.split('/')[1]?.trim();
-            return f.anos.some(selectedAno => ano === selectedAno || ano === selectedAno.slice(-2));
-        });
-        // Don't filter rows yet, just mark valid columns
-    }
 
     // Now update subsequent filters
     for (let i = changedIndex + 1; i < filterOrder.length; i++) {
@@ -357,73 +343,53 @@ function updateCascadeFilters(changedFilter) {
         // Build filtered dataset considering all previous filters
         let tempData = [...state.rawData];
 
-        // Apply Year filter
-        if (f.anos.length > 0) {
-            const validYearCols = Object.keys(state.mapaMeses).filter(col => {
-                const ano = col.split('/')[1]?.trim();
-                return f.anos.some(selectedAno => ano === selectedAno || ano === selectedAno.slice(-2));
-            });
-            tempData = tempData.map(row => ({
-                ...row,
-                _hasYearData: validYearCols.some(col => {
-                    const val = parseFloat(row[col]?.toString().replace(',', '.') || 0);
-                    return val !== 0;
-                })
-            })).filter(row => row._hasYearData);
-        }
-
-        // Apply Month filter
-        if (f.meses.length > 0 && i > filterOrder.indexOf('Mes')) {
-            const validMonthCols = Object.keys(state.mapaMeses).filter(col => {
+        // Apply Period filter
+        if (f.periodos && f.periodos.length > 0) {
+            const validPeriodCols = [];
+            Object.keys(state.mapaMeses).forEach(col => {
                 const mes = state.mapaMeses[col];
                 const ano = col.split('/')[1]?.trim();
-                const yearMatches = f.anos.length === 0 || f.anos.some(selectedAno => ano === selectedAno || ano === selectedAno.slice(-2));
-                return f.meses.includes(mes) && yearMatches;
+                const periodo = `${mes}/${ano}`;
+                if (f.periodos.includes(periodo)) {
+                    validPeriodCols.push(col);
+                }
             });
+
             tempData = tempData.map(row => ({
                 ...row,
-                _hasMonthData: validMonthCols.some(col => {
+                _hasPeriodData: validPeriodCols.some(col => {
                     const val = parseFloat(row[col]?.toString().replace(',', '.') || 0);
                     return val !== 0;
                 })
-            })).filter(row => row._hasMonthData);
+            })).filter(row => row._hasPeriodData);
         }
 
         // Apply Empresa filter
-        if (f.empresas.length > 0 && i > filterOrder.indexOf('Empresa')) {
+        if (f.empresas && f.empresas.length > 0 && i > filterOrder.indexOf('Empresa')) {
             tempData = tempData.filter(row => f.empresas.includes(row.Empresa));
         }
 
         // Apply Projeto filter
-        if (f.projetos.length > 0 && i > filterOrder.indexOf('Projeto')) {
+        if (f.projetos && f.projetos.length > 0 && i > filterOrder.indexOf('Projeto')) {
             tempData = tempData.filter(row => f.projetos.includes(row.Projeto));
         }
 
         // Get unique options for this filter
         switch (filterToUpdate) {
-            case 'Ano':
-                // Extract unique years
-                const yearsSet = new Set();
+            case 'Periodo':
+                // Extract unique periods that exist
+                const periodosSet = new Set();
                 Object.keys(state.mapaMeses).forEach(col => {
-                    const ano = col.split('/')[1]?.trim();
-                    if (ano) yearsSet.add(ano);
-                });
-                options = Array.from(yearsSet).sort();
-                break;
-
-            case 'Mes':
-                // Extract unique months that exist in the selected years
-                const monthsSet = new Set();
-                Object.keys(state.mapaMeses).forEach(col => {
-                    const ano = col.split('/')[1]?.trim();
                     const mes = state.mapaMeses[col];
-                    const yearMatches = f.anos.length === 0 || f.anos.some(selectedAno => ano === selectedAno || ano === selectedAno.slice(-2));
-                    if (yearMatches && mes) {
-                        monthsSet.add(mes);
-                    }
+                    const ano = col.split('/')[1]?.trim();
+                    periodosSet.add(`${mes}/${ano}`);
                 });
-                options = Array.from(monthsSet).sort((a, b) => {
-                    return CONFIG.MESES_ORDEM.indexOf(a) - CONFIG.MESES_ORDEM.indexOf(b);
+                options = Array.from(periodosSet).sort((a, b) => {
+                    const [mesA, anoA] = a.split('/');
+                    const [mesB, anoB] = b.split('/');
+                    const yearDiff = anoA.localeCompare(anoB);
+                    if (yearDiff !== 0) return yearDiff;
+                    return CONFIG.MESES_ORDEM.indexOf(mesA) - CONFIG.MESES_ORDEM.indexOf(mesB);
                 });
                 break;
 
@@ -449,7 +415,6 @@ function updateCascadeFilters(changedFilter) {
         state.filters[filterKey] = [];
     }
 }
-
 function populateSelect(id, options) {
     const select = document.getElementById(id);
     select.innerHTML = '';
@@ -467,23 +432,22 @@ function applyFilters() {
     const f = state.filters;
 
     // 1. Filter by Empresa
-    if (f.empresas.length > 0) {
+    if (f.empresas && f.empresas.length > 0) {
         df = df.filter(row => f.empresas.includes(row.Empresa));
     }
 
     // 2. Filter by Projeto
-    if (f.projetos.length > 0) {
+    if (f.projetos && f.projetos.length > 0) {
         df = df.filter(row => f.projetos.includes(row.Projeto));
     }
 
     // 3. Filter by Categoria
-    if (f.categorias.length > 0) {
+    if (f.categorias && f.categorias.length > 0) {
         df = df.filter(row => f.categorias.includes(row.Categoria));
     }
 
-    // 4. Filter Columns (Months/Years)
-    // We don't filter rows for dates, we filter which columns we consider for calculation
-    const validColumns = getValidColumns(f.anos, f.meses);
+    // 4. Filter Columns (Periods)
+    const validColumns = getValidColumns(f.periodos);
 
     // Calculate Totals for each row based on valid columns
     df.forEach(row => {
@@ -492,7 +456,7 @@ function applyFilters() {
             const val = parseFloat(row[col]?.toString().replace(',', '.') || 0);
             if (!isNaN(val)) total += val;
         });
-        row._TotalCalculado = total;
+        row.TotalCalculado = total;
     });
 
     state.filteredData = df;
@@ -502,17 +466,18 @@ function applyFilters() {
     updateUI();
 }
 
-function getValidColumns(anosFiltro, mesesFiltro) {
+function getValidColumns(periodosFiltro) {
     const allCols = Object.keys(state.mapaMeses);
+
+    if (!periodosFiltro || periodosFiltro.length === 0) {
+        return allCols; // No filter, return all
+    }
+
     return allCols.filter(col => {
-        const partes = col.split('/');
         const mes = state.mapaMeses[col];
-        const ano = partes[1].trim();
-
-        const anoOk = anosFiltro.length === 0 || anosFiltro.includes(ano);
-        const mesOk = mesesFiltro.length === 0 || mesesFiltro.includes(mes);
-
-        return anoOk && mesOk;
+        const ano = col.split('/')[1]?.trim();
+        const periodo = `${mes}/${ano}`;
+        return periodosFiltro.includes(periodo);
     });
 }
 
@@ -1167,7 +1132,7 @@ function formatCurrency(value) {
 
 function clearFilters() {
     document.querySelectorAll('select').forEach(select => select.value = '');
-    state.filters = { empresas: [], anos: [], meses: [], projetos: [], categorias: [] };
+    state.filters = { empresas: [], periodos: [], projetos: [], categorias: [] };
     applyFilters();
 }
 
