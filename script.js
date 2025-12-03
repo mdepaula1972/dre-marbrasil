@@ -1,4 +1,4 @@
-// Update: 03/12/2025 13:40
+// Update: 03/12/2025 14:29
 
 // Configuration
 const CONFIG = {
@@ -173,7 +173,6 @@ document.getElementById('sidebarToggle').addEventListener('click', () => {
 });
 
 document.getElementById('btnExportTable').addEventListener('click', exportTableToCSV);
-}
 
 function initCharts() {
     const ctxMain = document.getElementById('mainChart').getContext('2d');
