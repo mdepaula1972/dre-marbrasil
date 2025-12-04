@@ -590,7 +590,17 @@ function calculateDRE() {
         getVal("Outros Tributos") + getVal("Despesas Eventuais") + getVal("Despesas Variáveis") + getVal("Intermediação de Negócios") +
         getVal("Distribuição de Dividendos");
 
-    const totalInvestimentos = getVal("Consórcios a contemplar") + getVal("Serviços") + getVal("Ativos");
+    // Nova regra de cálculo de Investimentos
+    const servicosRaw = getVal("Serviços");
+    const consorciosRaw = getVal("Consórcios a contemplar");
+    const ativosRaw = getVal("Ativos");
+
+    let servicosAjustado = 0;
+    if (servicosRaw > consorciosRaw) {
+        servicosAjustado = servicosRaw - consorciosRaw;
+    }
+
+    const totalInvestimentos = ativosRaw + consorciosRaw + servicosAjustado;
 
     const totalSaidas = totalImpostos + totalCustos + totalDespesas + totalInvestimentos;
 
