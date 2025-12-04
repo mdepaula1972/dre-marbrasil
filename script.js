@@ -558,13 +558,24 @@ function calculateDRE() {
 
         } else if (item.tipo === 'linha_calc') {
             if (item.formula === 'servicos_menos_consorcios') {
-                valoresTotal[item.titulo] = servicosBaseTotal - consorciosTotal;
+                // Aplicar regra: só subtrai se Serviços >= Consórcios, senão = 0
+                let totalServicosAjustado = 0;
+                if (servicosBaseTotal >= consorciosTotal) {
+                    totalServicosAjustado = servicosBaseTotal - consorciosTotal;
+                }
+                valoresTotal[item.titulo] = totalServicosAjustado;
 
                 valoresMensal[item.titulo] = {};
                 cols.forEach(col => {
                     const s = catMonthly['Serviços']?.[col] || 0;
                     const c = catMonthly['Consórcios - a contemplar']?.[col] || 0;
-                    valoresMensal[item.titulo][col] = s - c;
+
+                    // Aplicar mesma regra por mês
+                    let servicosAjustadoMes = 0;
+                    if (s >= c) {
+                        servicosAjustadoMes = s - c;
+                    }
+                    valoresMensal[item.titulo][col] = servicosAjustadoMes;
                 });
             }
         }
