@@ -129,10 +129,20 @@ async function loadFromGoogleSheets() {
 }
 
 // Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    initEventListeners();
+function initializeApp() {
     initCharts();
-});
+    loadFromGoogleSheets();
+}
+
+// Se o DOM ainda estiver carregando, espera o DOMContentLoaded.
+// Se o DOM já estiver pronto (caso do script ser carregado depois), roda direto.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
+
+
 
 // Filters with Cascading Support
 const filterOrder = ['Periodo', 'Empresa', 'Projeto', 'Categoria'];
