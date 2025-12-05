@@ -49,7 +49,7 @@ const CONFIG = {
         { titulo: "Total Despesas Rateadas", tipo: "card", var: "total_despesas" },
         { titulo: "", tipo: "divisor" },
         { titulo: "Consórcios a contemplar", tipo: "linha", categorias: ["Consórcios - a contemplar"] },
-        { titulo: "Serviços", tipo: "linha_calc", formula: "servicos_menos_consorcios", categorias: ["Serviços"] },
+        { titulo: "Serviços", tipo: "linha", categorias: ["Serviços"] },
         { titulo: "Ativos", tipo: "linha", categorias: ["Ativos"] },
         { titulo: "Total Investimentos", tipo: "card", var: "total_investimentos" },
         { titulo: "", tipo: "divisor" },
@@ -129,10 +129,20 @@ async function loadFromGoogleSheets() {
 }
 
 // Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    initEventListeners();
+function initializeApp() {
     initCharts();
-});
+    loadFromGoogleSheets();
+}
+
+// Se o DOM ainda estiver carregando, espera o DOMContentLoaded.
+// Se o DOM já estiver pronto (caso do script ser carregado depois), roda direto.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
+
+
 
 // Filters with Cascading Support
 const filterOrder = ['Periodo', 'Empresa', 'Projeto', 'Categoria'];
@@ -611,7 +621,7 @@ function calculateDRE() {
         servicosAjustado = servicosRaw - consorciosRaw;
     }
 
-    const totalInvestimentos = ativosRaw + consorciosRaw + servicosAjustado;
+    const totalInvestimentos = ativosRaw + consorciosRaw + servicosRaw;
 
     const totalSaidas = totalImpostos + totalCustos + totalDespesas + totalInvestimentos;
 
@@ -1563,10 +1573,19 @@ async function exportToPDF() {
 function openPorMaquinaModal() {
     const totalEquipamentos = state.metrics.total_equipamentos;
 
+    document.getElementById('porMaquinaTitle').innerHTML =
+        `<i class="bi bi-pc-display-horizontal me-2"></i>Análise por Equipamento — ${totalEquipamentos} equipamentos`;
+
+
     if (!totalEquipamentos || totalEquipamentos === 0) {
         alert('Nenhum equipamento encontrado no período filtrado.');
         return;
     }
+
+    // 🆕 Atualiza o título com número total
+    document.getElementById('modalTitle').textContent =
+        `Análise por Equipamento — ${totalEquipamentos} equipamentos`;
+
 
     const m = state.metrics;
 
@@ -1629,15 +1648,15 @@ function openPorMaquinaModal() {
     document.body.style.overflow = 'hidden';
 
 
-    function closePorMaquinaModal() {
-        document.getElementById('porMaquinaModal').classList.remove('active');
-        document.body.style.overflow = 'auto';
-    }
-
     // Fechar ao pressionar ESC
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closePorMaquinaModal();
         }
     });
+}
+
+function closePorMaquinaModal() {
+    document.getElementById('porMaquinaModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
 }
