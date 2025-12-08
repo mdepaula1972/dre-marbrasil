@@ -844,14 +844,21 @@ function updateCards() {
     // Row 1 (Main KPIs)
     const row1 = [
         {
-            key: 'total_entradas',
-            title: 'Receitas Totais',
-            icon: 'bi-graph-up-arrow',
-            color: 'primary',
-            bgColor: 'bg-blue-soft',
-            
-        
-        },
+    key: 'total_entradas',
+    title: 'Receitas Totais',
+    icon: 'bi-graph-up-arrow',
+    color: 'primary',
+    bgColor: 'bg-blue-soft',
+    isBreakdown: true,
+    isClickable: true,
+    breakdown: {
+        total: m.total_entradas + m.outras_entradas,
+        items: [
+            { label: 'Operacionais', value: m.total_entradas },
+            { label: 'Outras Entradas', value: m.outras_entradas }
+        ]
+    }
+},
 
         { key: 'total_saidas', title: 'Total Saídas', icon: 'bi-graph-down-arrow', color: 'danger', bgColor: 'bg-red-soft', percentKey: 'perc_total_saidas', percentRefIcon: 'bi-graph-up-arrow' },
         { key: 'resultado', title: 'Resultado', icon: 'bi-bullseye', color: 'highlight', bgColor: 'bg-yellow-soft', percentKey: 'perc_resultado', percentRefIcon: 'bi-graph-up-arrow' },
@@ -938,11 +945,15 @@ function renderCards(containerId, cards, metrics, colSize) {
         // Declarar html uma única vez
         let html;
 
-        // Verificar se é card com breakdown
+       // Verificar se é card com breakdown
         if (card.isBreakdown && card.breakdown) {
+            // Definir se é clicável
+            const breakdownClickClass = card.isClickable ? 'card-clickable' : '';
+            const breakdownClickHandler = card.isClickable ? `onclick="showCardDetails('${card.key}', '${card.title}')"` : '';
+            
             html = `
                 <div class="${colClass}">
-                    <div class="metric-card ${cardClass} ${bgClass}">
+                    <div class="metric-card ${cardClass} ${bgClass} ${breakdownClickClass}" ${breakdownClickHandler}>
                         <div class="icon-box">
                             <i class="bi ${card.icon}"></i>
                         </div>
@@ -960,7 +971,7 @@ function renderCards(containerId, cards, metrics, colSize) {
                         </div>
                     </div>
                 </div>
-            `;
+    `;
         } else {
             // Card normal
             html = `
