@@ -148,12 +148,12 @@ function initEventListeners() {
                 const filter = filterId.replace('filter', '');
                 const key = filter.toLowerCase() + 's';
                 state.filters[key] = selectedOptions;
-                
+
                 // Update cascade if needed
                 if (typeof updateCascadeFilters === 'function') {
                     updateCascadeFilters(filter);
                 }
-                
+
                 applyFilters();
             });
         }
@@ -316,7 +316,7 @@ function handleFileUpload(event) {
 function processParsedData(results) {
     let data = results.data;
 
-     // === DEBUG ADICIONAL ===
+    // === DEBUG ADICIONAL ===
     console.log('=== DEBUG processParsedData ===');
     console.log('Total de linhas recebidas:', data.length);
     console.log('Primeira linha RAW:', data[0]);
@@ -411,7 +411,7 @@ function extractMetadata(data) {
     populateSelect('filterPeriodo', periodosFormatados);
     populateSelect('filterEmpresa', [...new Set(data.map(d => d.Empresa))].sort());
     populateSelect('filterProjeto', [...new Set(data.map(d => d.Projeto))].sort());
-    
+
     // Filtro de Categoria usa coluna "Categoria"
     populateSelect('filterCategoria', [...new Set(data.map(d => d.Categoria))].sort());
 }
@@ -448,7 +448,7 @@ function updateCascadeFilters(changedFilter) {
                     validPeriodCols.push(col);
                 }
             });
-            
+
             tempData = tempData.map(row => ({
                 ...row,
                 _hasPeriodData: validPeriodCols.some(col => {
@@ -496,7 +496,7 @@ function updateCascadeFilters(changedFilter) {
                 break;
 
             case 'Categoria':
-                
+
                 options = [...new Set(tempData.map(d => d.Categoria))].sort();
                 break;
         }
@@ -619,7 +619,27 @@ function calculateDRE() {
             catTotals[cat] += val;
             catMonthly[cat][col] += val;
         });
-});
+    });
+
+    // Helper para buscar total da categoria ignorando maiúsculas/minúsculas
+    const getCatTotal = (targetCat) => {
+        if (!targetCat) return 0;
+        const exact = catTotals[targetCat];
+        if (exact !== undefined) return exact;
+
+        // Tenta encontrar ignorando maiúsculas/minúsculas e espaços
+        const key = Object.keys(catTotals).find(k => k.trim().toLowerCase() === targetCat.trim().toLowerCase());
+        return key ? catTotals[key] : 0;
+    };
+
+    const getCatMonthly = (targetCat, col) => {
+        if (!targetCat) return 0;
+        const exact = catMonthly[targetCat]?.[col];
+        if (exact !== undefined) return exact;
+
+        const key = Object.keys(catMonthly).find(k => k.trim().toLowerCase() === targetCat.trim().toLowerCase());
+        return key ? (catMonthly[key][col] || 0) : 0;
+    };
     // DEBUG: Log unique categories and specific totals
     console.log("=== DEBUG: Categorias Encontradas ===");
     console.log("Todas as categorias:", Object.keys(catTotals).sort());
@@ -635,20 +655,20 @@ function calculateDRE() {
     const valoresMensal = {};
 
     // Special logic for "Serviços" formula
-    const servicosBaseTotal = catTotals['Serviços'] || 0;
-    const consorciosTotal = catTotals['Consórcios - a contemplar'] || 0;
+    const servicosBaseTotal = getCatTotal('Serviços');
+    const consorciosTotal = getCatTotal('Consórcios - a contemplar');
 
     CONFIG.ESTRUTURA_DRE.forEach(item => {
         if (item.tipo === 'linha') {
-            // Sum categories
+            // Soma categorias usando a função inteligente getCatTotal
             let total = 0;
-            item.categorias.forEach(cat => total += (catTotals[cat] || 0));
+            item.categorias.forEach(cat => total += getCatTotal(cat));
             valoresTotal[item.titulo] = total;
 
             valoresMensal[item.titulo] = {};
             cols.forEach(col => {
                 let mesTotal = 0;
-                item.categorias.forEach(cat => mesTotal += (catMonthly[cat]?.[col] || 0));
+                item.categorias.forEach(cat => mesTotal += getCatMonthly(cat, col));
                 valoresMensal[item.titulo][col] = mesTotal;
             });
 
@@ -663,8 +683,8 @@ function calculateDRE() {
 
                 valoresMensal[item.titulo] = {};
                 cols.forEach(col => {
-                    const s = catMonthly['Serviços']?.[col] || 0;
-                    const c = catMonthly['Consórcios - a contemplar']?.[col] || 0;
+                    const s = getCatMonthly('Serviços', col);
+                    const c = getCatMonthly('Consórcios - a contemplar', col);
 
                     // Aplicar mesma regra por mês
                     let servicosAjustadoMes = 0;
@@ -677,14 +697,18 @@ function calculateDRE() {
         }
     });
 
-    // --- Aggregators ---
+    // --- Aggregators (Totais) ---
     const getVal = (key) => valoresTotal[key] || 0;
 
     const receitaOperacional = getVal("Receita Bruta de Vendas");
     const receitaIndireta = getVal("Receitas Indiretas");
     const totalEntradas = receitaOperacional + receitaIndireta;
 
-    const outrasEntradas = getVal("Outras Receitas") + getVal("Receitas Financeiras") + getVal("Honorários") + getVal("Juros e Devoluções") + getVal("Recuperação de Despesas Variáveis");
+    const outrasEntradas = getVal("Outras Receitas") +
+        getVal("Receitas Financeiras") +
+        getVal("Honorários") +
+        getVal("Juros e Devoluções") +
+        getVal("Recuperação de Despesas Variáveis");
 
     const totalImpostos = getVal("Impostos") + getVal("Provisão IRPJ e CSSL Trimestral");
 
@@ -695,7 +719,7 @@ function calculateDRE() {
     const totalDespesas = getVal("Credenciado Administrativo") + getVal("Credenciado TI") +
         getVal("Despesas Administrativas") + getVal("Despesas de Vendas e Marketing") + getVal("Despesas Financeiras") +
         getVal("Outros Tributos") + getVal("Despesas Eventuais") + getVal("Despesas Variáveis") + getVal("Intermediação de Negócios") +
-        getVal("Distribuição de Dividendos");
+        (getCatTotal("Distribuição de Dividendos") + getCatTotal("Dividendos"));
 
     // Nova regra de cálculo de Investimentos
     const servicosRaw = getVal("Serviços");
@@ -717,28 +741,28 @@ function calculateDRE() {
     const percLucro = totalEntradas !== 0 ? (resultado / totalEntradas * 100) : 0;
     const percFcl = totalEntradas !== 0 ? (fcl / totalEntradas * 100) : 0;
 
-    // New Metrics Calculation
-    const pessoal = sumByCat([
-        "Despesas com Pessoal",
-        "Terceirização de Mão de Obra"
-    ]);
+    // --- Novas Métricas e KPI Cards ---
+    // Helper para somar lista de categorias usando a busca segura (getCatTotal)
+    const sumCategories = (list) => list.reduce((acc, cat) => acc + getCatTotal(cat), 0);
 
-    const corretiva = sumByCat(["Corretiva - B2G", "Manutenção Corretiva"]);
-    const preventiva = sumByCat(["Preventiva - B2G", "Manutenção Preventiva"]);
-
-    // Calcular Total e Média de Equipamentos
-    const totalEquipamentos = sumByCat(["Equipamentos"]);
-    const mediaEquipamentos = cols.length > 0 ? (totalEquipamentos / cols.length) : 0;
-
-    // Novos Cards: Credenciados, CLTs e Terceirização
-    const credenciados = sumByCat([
+    const credenciados = sumCategories([
         "Credenciado Administrativo", "Adiantamento - Credenciado Administrativo",
         "Credenciado TI", "Adiantamento - Credenciado TI",
         "Credenciado Operacional", "Adiantamento - Credenciado Operacional"
     ]);
 
-    const clts = pessoal - credenciados;
-    const terceirizacao = sumByCat(["Terceirização de Mão de Obra"]);
+    const terceirizacao = sumCategories(["Terceirização de Mão de Obra"]);
+    const clts = getCatTotal("Despesas com Pessoal");
+
+    // Pessoal Total = CLT + Terceiros + Credenciados
+    const pessoal = clts + terceirizacao + credenciados;
+
+    const corretiva = sumCategories(["Corretiva - B2G", "Manutenção Corretiva"]);
+    const preventiva = sumCategories(["Preventiva - B2G", "Manutenção Preventiva"]);
+
+    // Calcular Total e Média de Equipamentos
+    const totalEquipamentos = getCatTotal("Equipamentos");
+    const mediaEquipamentos = cols.length > 0 ? (totalEquipamentos / cols.length) : 0;
     // Store Metrics
     state.metrics = {
         total_entradas: totalEntradas,
@@ -844,21 +868,21 @@ function updateCards() {
     // Row 1 (Main KPIs)
     const row1 = [
         {
-    key: 'total_entradas',
-    title: 'Receitas Totais',
-    icon: 'bi-graph-up-arrow',
-    color: 'primary',
-    bgColor: 'bg-blue-soft',
-    isBreakdown: true,
-    isClickable: true,
-    breakdown: {
-        total: m.total_entradas + m.outras_entradas,
-        items: [
-            { label: 'Operacionais', value: m.total_entradas },
-            { label: 'Outras Entradas', value: m.outras_entradas }
-        ]
-    }
-},
+            key: 'total_entradas',
+            title: 'Receitas Totais',
+            icon: 'bi-graph-up-arrow',
+            color: 'primary',
+            bgColor: 'bg-blue-soft',
+            isBreakdown: true,
+            isClickable: true,
+            breakdown: {
+                total: m.total_entradas + m.outras_entradas,
+                items: [
+                    { label: 'Operacionais', value: m.total_entradas },
+                    { label: 'Outras Entradas', value: m.outras_entradas }
+                ]
+            }
+        },
 
         { key: 'total_saidas', title: 'Total Saídas', icon: 'bi-graph-down-arrow', color: 'danger', bgColor: 'bg-red-soft', percentKey: 'perc_total_saidas', percentRefIcon: 'bi-graph-up-arrow' },
         { key: 'resultado', title: 'Resultado', icon: 'bi-bullseye', color: 'highlight', bgColor: 'bg-yellow-soft', percentKey: 'perc_resultado', percentRefIcon: 'bi-graph-up-arrow' },
@@ -945,12 +969,12 @@ function renderCards(containerId, cards, metrics, colSize) {
         // Declarar html uma única vez
         let html;
 
-       // Verificar se é card com breakdown
+        // Verificar se é card com breakdown
         if (card.isBreakdown && card.breakdown) {
             // Definir se é clicável
             const breakdownClickClass = card.isClickable ? 'card-clickable' : '';
             const breakdownClickHandler = card.isClickable ? `onclick="showCardDetails('${card.key}', '${card.title}')"` : '';
-            
+
             html = `
                 <div class="${colClass}">
                     <div class="metric-card ${cardClass} ${bgClass} ${breakdownClickClass}" ${breakdownClickHandler}>
@@ -1307,7 +1331,12 @@ function showCardDetails(key, title) {
     const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
     document.getElementById('modalTitle').textContent = title;
 
-    const total = state.metrics[key] || 0;
+    let total = state.metrics[key] || 0;
+    // Correção: Para Receitas Totais, somar Operacionais + Outras Entradas no total do modal
+    if (key === 'total_entradas') {
+        total += (state.metrics.outras_entradas || 0);
+    }
+
     document.getElementById('modalTotalValue').textContent = formatCurrency(total);
     document.getElementById('modalAvgValue').textContent = formatCurrency(total / (state.validColumns.length || 1));
 
@@ -1661,7 +1690,7 @@ async function exportToPDF() {
 // ========================================
 
 
-   function openPorMaquinaModal() {
+function openPorMaquinaModal() {
     const totalEquipamentos = state.metrics.total_equipamentos;
 
     if (!totalEquipamentos || totalEquipamentos === 0) {
@@ -1740,18 +1769,17 @@ async function exportToPDF() {
     document.body.style.overflow = 'hidden';
 }
 
-    // ========================================
-    // FECHAR MODAL POR MÁQUINA (GLOBAL)
-    // ========================================
-    function closePorMaquinaModal() {
-        document.getElementById('porMaquinaModal').classList.remove('active');
-        document.body.style.overflow = 'auto';
-    }
+// ========================================
+// FECHAR MODAL POR MÁQUINA (GLOBAL)
+// ========================================
+function closePorMaquinaModal() {
+    document.getElementById('porMaquinaModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
 
-    // Fechar ao pressionar ESC
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closePorMaquinaModal();
-        }
-    });
-    
+// Fechar ao pressionar ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closePorMaquinaModal();
+    }
+});
