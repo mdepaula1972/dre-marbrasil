@@ -752,7 +752,9 @@ function calculateDRE() {
     ]);
 
     const terceirizacao = sumCategories(["Terceirização de Mão de Obra"]);
-    const clts = getCatTotal("Despesas com Pessoal");
+
+    // Correção: CLTs é calculado como "Despesas com Pessoal" MENOS Credenciados
+    const clts = getCatTotal("Despesas com Pessoal") - credenciados;
 
     // Pessoal Total = CLT + Terceiros + Credenciados
     const pessoal = clts + terceirizacao + credenciados;
