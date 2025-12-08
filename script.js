@@ -720,9 +720,6 @@ function calculateDRE() {
     // New Metrics Calculation
     const pessoal = sumByCat([
         "Despesas com Pessoal",
-        "Credenciado Administrativo", "Adiantamento - Credenciado Administrativo",
-        "Credenciado TI", "Adiantamento - Credenciado TI",
-        "Credenciado Operacional", "Adiantamento - Credenciado Operacional",
         "Terceirização de Mão de Obra"
     ]);
 
@@ -740,7 +737,7 @@ function calculateDRE() {
         "Credenciado Operacional", "Adiantamento - Credenciado Operacional"
     ]);
 
-    const clts = sumByCat(["Despesas com Pessoal"]);
+    const clts = pessoal - credenciados;
     const terceirizacao = sumByCat(["Terceirização de Mão de Obra"]);
     // Store Metrics
     state.metrics = {
@@ -852,15 +849,10 @@ function updateCards() {
             icon: 'bi-graph-up-arrow',
             color: 'primary',
             bgColor: 'bg-blue-soft',
-            isBreakdown: true,
-            breakdown: {
-                total: m.total_entradas + m.outras_entradas,
-                items: [
-                    { label: 'Operacionais', value: m.total_entradas },
-                    { label: 'Outras Entradas', value: m.outras_entradas }
-                ]
-            }
+            
+        
         },
+
         { key: 'total_saidas', title: 'Total Saídas', icon: 'bi-graph-down-arrow', color: 'danger', bgColor: 'bg-red-soft', percentKey: 'perc_total_saidas', percentRefIcon: 'bi-graph-up-arrow' },
         { key: 'resultado', title: 'Resultado', icon: 'bi-bullseye', color: 'highlight', bgColor: 'bg-yellow-soft', percentKey: 'perc_resultado', percentRefIcon: 'bi-graph-up-arrow' },
         { key: 'fcl', title: 'FCL', icon: 'bi-wallet2', color: 'success', bgColor: 'bg-green-soft', percentKey: 'perc_fcl_receita', percentRefIcon: 'bi-graph-up-arrow' }
@@ -1316,7 +1308,7 @@ function showCardDetails(key, title) {
 
     // Map metric keys to DRE Line Titles or Categories
     const metricMap = {
-        'total_entradas': ['Receita Bruta de Vendas', 'Receitas Indiretas'],
+        'total_entradas': ['Receita Bruta de Vendas', 'Receitas Indiretas', 'Outras Receitas', 'Receitas Financeiras', 'Honorários', 'Juros e devoluções', 'Recuperação de Despesas Variáveis'],
         'outras_entradas': ['Outras Receitas', 'Receitas Financeiras', 'Honorários', 'Juros e devoluções'],
         'total_impostos': ['Impostos', 'Provisão - IRPJ e CSSL Trimestral'],
         'total_custos': ['Credenciado Operacional', 'Adiantamento - Credenciado Operacional', 'Terceirização de Mão de Obra', 'Despesas com Pessoal', 'Custo dos Serviços Prestados', 'Preventiva - B2G', 'Manutenção Preventiva', 'Corretiva - B2G', 'Manutenção Corretiva', 'Outros Custos'],
