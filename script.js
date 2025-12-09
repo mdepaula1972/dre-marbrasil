@@ -663,12 +663,38 @@ function calculateDRE() {
             // Soma categorias usando a função inteligente getCatTotal
             let total = 0;
             item.categorias.forEach(cat => total += getCatTotal(cat));
+
+            // Correção Espacial: Despesas Variáveis deve deduzir Distribuição de Dividendos
+            if (item.titulo === "Despesas Variáveis") {
+                const divTotal = getCatTotal("Distribuição de Dividendos") + getCatTotal("Dividendos");
+                total -= divTotal;
+            }
+
+            // Correção Espacial: Custo dos Serviços Prestados deve deduzir Credenciado Operacional
+            if (item.titulo === "Custo dos Serviços Prestados") {
+                const credOpTotal = getCatTotal("Credenciado Operacional") + getCatTotal("Adiantamento - Credenciado Operacional");
+                total -= credOpTotal;
+            }
+
             valoresTotal[item.titulo] = total;
 
             valoresMensal[item.titulo] = {};
             cols.forEach(col => {
                 let mesTotal = 0;
                 item.categorias.forEach(cat => mesTotal += getCatMonthly(cat, col));
+
+                // Correção Espacial Mensal: Despesas Variáveis
+                if (item.titulo === "Despesas Variáveis") {
+                    const divMes = getCatMonthly("Distribuição de Dividendos", col) + getCatMonthly("Dividendos", col);
+                    mesTotal -= divMes;
+                }
+
+                // Correção Espacial Mensal: Custo dos Serviços Prestados
+                if (item.titulo === "Custo dos Serviços Prestados") {
+                    const credOpMes = getCatMonthly("Credenciado Operacional", col) + getCatMonthly("Adiantamento - Credenciado Operacional", col);
+                    mesTotal -= credOpMes;
+                }
+
                 valoresMensal[item.titulo][col] = mesTotal;
             });
 
