@@ -85,6 +85,10 @@
                 <button id="btnClearFilters" class="btn btn-outline-light btn-sm w-100 mt-2">
                     <i class="bi bi-x-circle me-2"></i>Limpar
                 </button>
+
+                <div class="mt-4 pt-4 border-top border-secondary text-white-50 text-center small">
+                    <small>Versão: <span id="appVersion">-</span></small>
+                </div>
             </div>
         </div>
     </div>
@@ -174,7 +178,7 @@
 
     <!-- Modal for Card Details -->
     <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-0 bg-light">
                     <h5 class="modal-title fw-bold" id="modalTitle">Detalhes</h5>
@@ -205,7 +209,7 @@
                         <div class="card-body">
                             <h6 class="card-title fw-bold text-muted mb-3"><i class="bi bi-graph-up me-2"></i>Evolução
                                 no Período</h6>
-                            <div style="height: 300px;">
+                            <div style="height: 450px;">
                                 <canvas id="modalChart"></canvas>
                             </div>
                         </div>
@@ -308,6 +312,13 @@
                     kpiRow.classList.remove('scrolled');
                 }
             }
+        });
+
+        // Version Updater
+        document.addEventListener('DOMContentLoaded', () => {
+            const date = new Date(document.lastModified);
+            const formatted = date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('appVersion').textContent = formatted;
         });
     </script>
 </body>
