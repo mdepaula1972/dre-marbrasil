@@ -41,7 +41,7 @@
                 <label for="csvFile" class="form-label text-white mb-2"><i class="bi bi-cloud-upload me-2"></i>Carregar
                     DRE</label>
                 <input class="form-control form-control-sm" type="file" id="csvFile" accept=".csv">
-                
+
                 <!-- DESABILITADO TEMPORARIAMENTE
                 <button class="btn btn-outline-light btn-sm w-100 mt-2" onclick="loadFromGoogleSheets()">
                     <i class="bi bi-table me-2"></i>Carregar do Google Sheets
@@ -199,6 +199,17 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Chart Section in Modal -->
+                    <div class="card mb-4 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-title fw-bold text-muted mb-3"><i class="bi bi-graph-up me-2"></i>Evolução
+                                no Período</h6>
+                            <div style="height: 300px;">
+                                <canvas id="modalChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                     <h6 class="fw-bold mb-3">Composição por Categoria</h6>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover" id="modalTable">
@@ -229,40 +240,40 @@
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
-    <div class="por-maquina-body">
-        <!-- Cards do Topo -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card bg-light">
-                    <div class="card-body text-center">
-                        <h6 class="text-muted mb-1">Total Acumulado</h6>
-                        <h3 class="mb-0" id="porMaquinaTotal">-</h3>
+            <div class="por-maquina-body">
+                <!-- Cards do Topo -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-1">Total Acumulado</h6>
+                                <h3 class="mb-0" id="porMaquinaTotal">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-1">Média Mensal</h6>
+                                <h3 class="mb-0" id="porMaquinaMedia">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h6 class="mb-1"><i class="bi bi-pc-display me-1"></i>Equipamentos</h6>
+                                <h3 class="mb-0" id="porMaquinaQtd">-</h3>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card bg-light">
-                    <div class="card-body text-center">
-                        <h6 class="text-muted mb-1">Média Mensal</h6>
-                        <h3 class="mb-0" id="porMaquinaMedia">-</h3>
-                    </div>
+
+                <!-- Tabela -->
+                <div id="porMaquinaBody">
+                    <!-- Conteúdo será gerado dinamicamente -->
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card bg-primary text-white">
-                    <div class="card-body text-center">
-                        <h6 class="mb-1"><i class="bi bi-pc-display me-1"></i>Equipamentos</h6>
-                        <h3 class="mb-0" id="porMaquinaQtd">-</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Tabela -->
-        <div id="porMaquinaBody">
-            <!-- Conteúdo será gerado dinamicamente -->
-        </div>
-    </div>
         </div>
     </div>
 
@@ -278,6 +289,7 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <!-- PDF Export Libraries -->

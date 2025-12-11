@@ -83,7 +83,8 @@ let state = {
     dreData: [],
     charts: {
         main: null,
-        pie: null
+        pie: null,
+        modal: null
     }
 };
 
@@ -242,6 +243,9 @@ document.getElementById('sidebarToggle').addEventListener('click', () => {
 });
 
 document.getElementById('btnExportTable').addEventListener('click', exportTableToCSV);
+
+// Register DataLabels plugin
+Chart.register(ChartDataLabels);
 
 function initCharts() {
     const ctxMain = document.getElementById('mainChart').getContext('2d');
@@ -1244,62 +1248,108 @@ function updateTable() {
     const cols2024 = state.validColumns.filter(c => c.includes('24'));
     const cols2025 = state.validColumns.filter(c => c.includes('25'));
 
-    // Sort columns chronologically (assuming they are already sorted by input, but let's be safe if needed, though input order is usually chronological)
-    // For now, we trust state.validColumns order.
+    // Identify if we can compare years
+    const hasComparison = cols2024.length > 0 && cols2025.length > 0;
 
     // Headers
     let headerHTML = '<tr><th style="min-width: 250px;">Descrição</th>';
 
     // Add 2024 columns
     cols2024.forEach(col => {
-        headerHTML += `<th class="text-end">${col}</th>`;
+        headerHTML += `<th class="text-end text-muted small" style="min-width: 80px;">${col}</th>`;
     });
     // Add Total 2024
     if (cols2024.length > 0) {
-        headerHTML += `<th class="text-end table-warning">Total 2024</th>`;
+        headerHTML += `<th class="text-end table-warning fw-bold border-start border-end">Total 2024</th>`;
     }
 
     // Add 2025 columns
     cols2025.forEach(col => {
-        headerHTML += `<th class="text-end">${col}</th>`;
+        headerHTML += `<th class="text-end text-muted small" style="min-width: 80px;">${col}</th>`;
     });
     // Add Total 2025
     if (cols2025.length > 0) {
-        headerHTML += `<th class="text-end table-warning">Total 2025</th>`;
+        headerHTML += `<th class="text-end table-warning fw-bold border-start">Total 2025</th>`;
     }
 
-    headerHTML += '<th class="text-end table-secondary text-white">Total 24/25</th>';
+    // Add Variation Column if comparison is possible
+    if (hasComparison) {
+        headerHTML += `<th class="text-end bg-white border-end fw-bold" style="min-width: 80px;">Var. %</th>`;
+    }
+
+    headerHTML += '<th class="text-end table-secondary text-white">Total Geral</th>';
     headerHTML += '<th class="text-end bg-light">Média</th>';
     headerHTML += '</tr>';
     thead.innerHTML = headerHTML;
+
+    // Helper for Row Nature (Good or Bad meaning of increase)
+    const isPositiveMetric = (desc) => {
+        const positiveList = [
+            'Receita Bruta de Vendas', 'Receitas Indiretas', 'Outras Receitas',
+            'Receitas Financeiras', 'Honorários', 'Juros e Devoluções',
+            'Recuperação de Despesas Variáveis', 'Mútuo - Entradas',
+            'Resultado', 'Fluxo de Caixa Livre', 'FCL s/ Receita Operacional'
+        ];
+        if (desc.startsWith('Receita') || positiveList.includes(desc)) return true;
+        return false;
+    };
 
     // Body
     let bodyHTML = '';
     state.dreData.forEach(row => {
         if (row.type === 'divisor') {
-            // Calculate colspan dynamically
-            let colSpan = 1 + cols2024.length + (cols2024.length > 0 ? 1 : 0) + cols2025.length + (cols2025.length > 0 ? 1 : 0) + 2;
+            let colSpan = 1 +
+                cols2024.length + (cols2024.length > 0 ? 1 : 0) +
+                cols2025.length + (cols2025.length > 0 ? 1 : 0) +
+                (hasComparison ? 1 : 0) +
+                2;
             bodyHTML += `<tr><td colspan="${colSpan}" class="p-0"><hr class="my-0 border-secondary opacity-25"></td></tr>`;
         } else {
             bodyHTML += `<tr>`;
-            bodyHTML += `<td class="fw-medium">${row.descricao}</td>`;
+            bodyHTML += `<td class="fw-medium text-truncate" style="max-width: 300px;" title="${row.descricao}">` + row.descricao + `</td>`;
 
             // 2024 Values
             cols2024.forEach(col => {
-                bodyHTML += `<td class="text-end">${formatCurrency(row.meses[col] || 0)}</td>`;
+                bodyHTML += `<td class="text-end small text-muted">${formatCurrency(row.meses[col] || 0)}</td>`;
             });
             // Total 2024
             if (cols2024.length > 0) {
-                bodyHTML += `<td class="text-end table-warning fw-bold">${formatCurrency(row.total2024)}</td>`;
+                bodyHTML += `<td class="text-end table-warning fw-bold border-start border-end">${formatCurrency(row.total2024)}</td>`;
             }
 
             // 2025 Values
             cols2025.forEach(col => {
-                bodyHTML += `<td class="text-end">${formatCurrency(row.meses[col] || 0)}</td>`;
+                bodyHTML += `<td class="text-end small text-muted">${formatCurrency(row.meses[col] || 0)}</td>`;
             });
             // Total 2025
             if (cols2025.length > 0) {
-                bodyHTML += `<td class="text-end table-warning fw-bold">${formatCurrency(row.total2025)}</td>`;
+                bodyHTML += `<td class="text-end table-warning fw-bold border-start">${formatCurrency(row.total2025)}</td>`;
+            }
+
+            // Variation Column
+            if (hasComparison) {
+                let varVal = 0;
+                let varText = '-';
+                let colorClass = 'text-muted';
+
+                if (row.total2024 !== 0) {
+                    varVal = ((row.total2025 - row.total2024) / Math.abs(row.total2024)) * 100;
+                    varText = varVal.toFixed(1) + '%';
+
+                    const goodIncrease = isPositiveMetric(row.descricao);
+
+                    if (varVal > 0) {
+                        colorClass = goodIncrease ? 'text-success fw-bold' : 'text-danger fw-bold';
+                        varText = '+' + varText;
+                    } else if (varVal < 0) {
+                        colorClass = goodIncrease ? 'text-danger fw-bold' : 'text-success fw-bold';
+                    }
+                } else if (row.total2025 !== 0) {
+                    varText = 'Novo';
+                    colorClass = 'text-primary fst-italic';
+                }
+
+                bodyHTML += `<td class="text-end border-end ${colorClass}" style="background-color: #fdfdfd;">${varText}</td>`;
             }
 
             // Total 24/25 & Media
@@ -1374,6 +1424,196 @@ function showCardDetails(key, title) {
     };
 
     const targetCategories = metricMap[key];
+
+    // --- GRAPH GENERATION (STACKED BAR) ---
+    const chartLabels = state.validColumns.map(c => {
+        const [mes, ano] = c.split('/');
+        return `${mes.charAt(0).toUpperCase() + mes.slice(1)}/${ano}`;
+    });
+
+    let datasets = [];
+
+    // Palette for distinct item colors
+    const palette = [
+        '#F2911B', '#262223', '#2ecc71', '#3498db', '#9b59b6',
+        '#f1c40f', '#1abc9c', '#e67e22', '#34495e', '#e74c3c',
+        '#16a085', '#27ae60', '#2980b9', '#8e44ad', '#d35400',
+        '#7f8c8d', '#c0392b', '#bdc3c7', '#7f8c8d', '#2c3e50'
+    ];
+
+    // Helper to get monthly series for a specific listing of categories
+    const getValuesSeries = (cats) => {
+        return state.validColumns.map(col => {
+            let sum = 0;
+            state.filteredData.forEach(row => {
+                if (cats.includes(row.Categoria)) {
+                    sum += parseFloat(row[col]?.toString().replace(',', '.') || 0);
+                }
+            });
+            return sum;
+        });
+    };
+
+    // Helper to add a dataset
+    const addDataset = (label, data, colorIdx) => {
+        datasets.push({
+            label: label,
+            data: data,
+            backgroundColor: palette[colorIdx % palette.length],
+            borderRadius: 2,
+            stack: 'Stack 0'
+        });
+    };
+
+    if (key === 'total_saidas') {
+        const groups = [
+            { label: 'Custos Operacionais', mapKey: 'total_custos' },
+            { label: 'Despesas Rateadas', mapKey: 'total_despesas' },
+            { label: 'Impostos', mapKey: 'total_impostos' },
+            { label: 'Investimentos', mapKey: 'total_investimentos' }
+        ];
+        groups.forEach((g, i) => {
+            addDataset(g.label, getValuesSeries(metricMap[g.mapKey]), i);
+        });
+
+    } else if (key === 'resultado') {
+        // Para Resultado, vamos mostrar Entradas vs Saídas Empilhadas (Neto é difícil de visualizar empilhado)
+        // Ou melhor: Breakdown dos componentes principais
+        // Atenção: Misturar positivo e negativo em stacked bar funciona (sobe e desce do eixo 0)
+
+        addDataset('Total Entradas Ops.', getValuesSeries(metricMap['total_entradas']), 2); // Verde
+        addDataset('Outras Entradas', getValuesSeries(metricMap['outras_entradas']), 5);    // Amarelo
+        addDataset('Ativos (Ajuste)', getValuesSeries(['Ativos']), 6);                      // Teal
+
+        // Saídas (Negativas para o gráfico ficar lógico em relação ao saldo? Ou positivas para comparação de volume?)
+        // O usuário quer ver "o que compõe". Mostrar saídas como negativo no gráfico de Resultado faz sentido matemática visualmente.
+
+        const invert = (arr) => arr.map(v => -Math.abs(v)); // Força visualização negativa
+
+        addDataset('Custos Operacionais', invert(getValuesSeries(metricMap['total_custos'])), 9); // Laranja 
+        addDataset('Despesas Rateadas', invert(getValuesSeries(metricMap['total_despesas'])), 1); // Dark
+        addDataset('Impostos', invert(getValuesSeries(metricMap['total_impostos'])), 16);         // Red
+        addDataset('Investimentos', invert(getValuesSeries(metricMap['total_investimentos'])), 4); // Purple
+
+    } else if (key === 'fcl') {
+        // FCL Composição: Resultado Liquido vs Ded. Ativos
+        // FCL = Resultado - Ativos. 
+        // Resultado é composto por (Entradas - Saídas). 
+        // Visualizar FCL breakdown é complexo. Vamos tentar mostrar Resultado vs Ativos
+
+        // Vamos calcular a série de Resultado primeiro
+        const entradas = getValuesSeries(metricMap['total_entradas']);
+        const outras = getValuesSeries(metricMap['outras_entradas']);
+        const ativos = getValuesSeries(['Ativos']);
+
+        const custos = getValuesSeries(metricMap['total_custos']);
+        const despesas = getValuesSeries(metricMap['total_despesas']);
+        const impostos = getValuesSeries(metricMap['total_impostos']);
+        const invest = getValuesSeries(metricMap['total_investimentos']);
+
+        const resultadoSeries = entradas.map((v, i) => v + outras[i] + ativos[i] - (custos[i] + despesas[i] + impostos[i] + invest[i]));
+
+        addDataset('Resultado Líquido', resultadoSeries, 2);
+        addDataset('(-) Ded. Ativos', ativos.map(v => -v), 9); // Negativo pois subtrai
+
+    } else if (metricMap[key]) {
+        // Caso Padrão: Divide nas categorias individuais listadas no map
+        // Ex: Custos Gerais -> Lista de todas as linhas de custo
+
+        // Se houver muitas categorias, o gráfico fica poluído. Vamos limitar ou agrupar?
+        // O pedido foi "cada item". Vamos honrar.
+
+        const categories = metricMap[key];
+
+        // Optimization: Sort categories by total value first to put biggest bars at bottom/top or predictable color order? 
+        // Or just iterate.
+        categories.forEach((cat, i) => {
+            const series = getValuesSeries([cat]);
+            // Só adiciona se tiver valor em algum mês (para não poluir a legenda à toa)
+            if (series.some(v => v !== 0)) {
+                addDataset(cat, series, i);
+            }
+        });
+
+    } else {
+        // Fallback Simple
+        addDataset(title, state.validColumns.map(() => 0), 0);
+    }
+
+    // Render Modal Chart
+    const ctxModal = document.getElementById('modalChart').getContext('2d');
+    if (state.charts.modal) state.charts.modal.destroy();
+
+    state.charts.modal = new Chart(ctxModal, {
+        type: 'bar',
+        data: {
+            labels: chartLabels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: {
+                    stacked: true,
+                    grid: { borderDash: [2, 2] },
+                    ticks: {
+                        callback: function (value) {
+                            if (Math.abs(value) >= 1000) {
+                                return (value / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + 'k';
+                            }
+                            return value;
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 10 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                },
+                datalabels: {
+                    color: 'white',
+                    display: function (context) {
+                        // Só mostrar se a barra for grande o suficiente visualmente ou % relevante
+                        // Cálculo da % no stack
+                        const value = context.dataset.data[context.dataIndex];
+                        if (value === 0) return false;
+
+                        const stackValues = context.chart.data.datasets.map(d => d.data[context.dataIndex]);
+                        // Soma absoluta para % de participação visual ou soma algébrica?
+                        // Geralmente em stacked bar queremos % do total da coluna.
+                        // Mas se tiver misto (+/-), o total da coluna pode ser pequeno (net).
+                        // Vamos usar a soma dos valores ABSOLUTOS da stack para calcular a representatividade VISUAL.
+                        const totalStack = stackValues.reduce((acc, v) => acc + Math.abs(v), 0);
+
+                        const percentage = Math.abs(value) / totalStack;
+                        return percentage > 0.05; // Só mostra se > 5%
+                    },
+                    formatter: function (value, context) {
+                        const stackValues = context.chart.data.datasets.map(d => d.data[context.dataIndex]);
+                        const totalStack = stackValues.reduce((acc, v) => acc + Math.abs(v), 0);
+                        const pct = (Math.abs(value) / totalStack * 100).toFixed(0);
+                        return pct + '%';
+                    },
+                    font: {
+                        weight: 'bold',
+                        size: 10
+                    },
+                    textShadowBlur: 2,
+                    textShadowColor: 'rgba(0,0,0,0.5)'
+                }
+            }
+        }
+    });
 
     if (targetCategories) {
         // Calculate totals for these categories from filtered data
