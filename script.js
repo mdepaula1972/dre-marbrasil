@@ -46,7 +46,7 @@ const CONFIG = {
         { titulo: "Outros Tributos", tipo: "linha", categorias: ["Outros Tributos"] },
         { titulo: "Despesas Eventuais", tipo: "linha", categorias: ["Jurídico"] },
         { titulo: "Despesas Variáveis", tipo: "linha", categorias: ["Despesas Variáveis"] },
-        { titulo: "Intermediação de Negócios", tipo: "linha", categorias: ["Intermediação de Negócios"] },
+        { titulo: "Intermediação de Negócios", tipo: "hidden", categorias: ["Intermediação de Negócios"] },
         { titulo: "Total Despesas Rateadas", tipo: "card", var: "total_despesas" },
         { titulo: "", tipo: "divisor" },
         { titulo: "Consórcios a contemplar", tipo: "linha", categorias: ["Consórcios - a contemplar"] },
@@ -659,18 +659,10 @@ function calculateDRE() {
     const consorciosTotal = getCatTotal('Consórcios - a contemplar');
 
     CONFIG.ESTRUTURA_DRE.forEach(item => {
-        if (item.tipo === 'linha') {
+        if (item.tipo === 'linha' || item.tipo === 'hidden') {
             // Soma categorias usando a função inteligente getCatTotal
             let total = 0;
             item.categorias.forEach(cat => total += getCatTotal(cat));
-
-            // Correção Espacial: Despesas Variáveis deve deduzir Distribuição de Dividendos
-            if (item.titulo === "Despesas Variáveis") {
-                const divTotal = getCatTotal("Distribuição de Dividendos") + getCatTotal("Dividendos");
-                total -= divTotal;
-            }
-
-
 
             valoresTotal[item.titulo] = total;
 
@@ -678,15 +670,6 @@ function calculateDRE() {
             cols.forEach(col => {
                 let mesTotal = 0;
                 item.categorias.forEach(cat => mesTotal += getCatMonthly(cat, col));
-
-                // Correção Espacial Mensal: Despesas Variáveis
-                if (item.titulo === "Despesas Variáveis") {
-                    const divMes = getCatMonthly("Distribuição de Dividendos", col) + getCatMonthly("Dividendos", col);
-                    mesTotal -= divMes;
-                }
-
-
-
                 valoresMensal[item.titulo][col] = mesTotal;
             });
 
